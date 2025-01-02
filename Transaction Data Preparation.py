@@ -55,11 +55,12 @@ mocked_batches = [
 
 # COMMAND ----------
 
-from spark.sql.functions import *
+from pyspark.sql.functions import *
+from delta.tables import *
 
 
 def mergeRecordsToTheDeltaTable(batch,table_name):
-    deltaTable = DeltaTabele.forName(spark,table_name)
+    deltaTable = DeltaTable.forName(spark,table_name)
 
     deltaTable.alias("target").merge(batch.alias("source"), "target.transaction_id = source.transaction_id")\
         .whenMatchedUpdate(set={
@@ -74,7 +75,19 @@ def mergeRecordsToTheDeltaTable(batch,table_name):
 # COMMAND ----------
 
 
-for i in range(len(mocked_batches)):
-    mergeRecordsToTheDeltaTable("transaction_catalog.default.upi_transaction_table", mocked_batches[i])
-    print(f"Batch processed successfully.")
-    time.sleep(4)
+# for i in range(len(mocked_batches)):
+mergeRecordsToTheDeltaTable(mocked_batches[0], "transaction_catalog.default.upi_transaction_table")
+print(f"Batch processed successfully.")
+    # time.sleep(4)
+
+# COMMAND ----------
+
+mergeRecordsToTheDeltaTable(mocked_batches[1], "transaction_catalog.default.upi_transaction_table")
+print(f"Batch processed successfully.")
+
+
+# COMMAND ----------
+
+mergeRecordsToTheDeltaTable(mocked_batches[2], "transaction_catalog.default.upi_transaction_table")
+print(f"Batch processed successfully.")
+

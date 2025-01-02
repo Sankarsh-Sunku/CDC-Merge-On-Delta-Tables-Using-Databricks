@@ -10,7 +10,7 @@
 aggregated_table = "transaction_catalog.default.upi_agg_table"
 raw_table = "transaction_catalog.default.upi_transaction_table"
 
-spark.sql("""
+spark.sql(f"""
 CREATE TABLE IF NOT EXISTS {aggregated_table}
 (
     merchant_id STRING,
@@ -23,10 +23,11 @@ USING DELTA
 
 # COMMAND ----------
 
-from spark.sql.functions import *
+from pyspark.sql.functions import *
 from delta.tables import *
 
 def process_aggregation(batch_df,batch_id):
+    print(f"Processing batch: {batch_id}")
 
     aggregated_df = batch_df.groupBy("merchant_id").agg(
         sum( when(col("transaction_status") == "completed", col("transaction_amount")).otherwise(0) ).alias("total_sales"),
@@ -36,7 +37,7 @@ def process_aggregation(batch_df,batch_id):
     deltaTable = DeltaTable.forName(spark, aggregated_table)
     deltaTable.alias("target").merge(
         aggregated_df.alias("source"),"target.merchant_id = source.merchant_id"
-    ).whenMatchedUpdate(set{
+    ).whenMatchedUpdate(set={
         "total_sales": "source.total_sales + target.total_sales",
         "total_refunds": "source.total_refunds + target.total_refunds",
         "net_sales": "source.net_sales + target.net_sales"
@@ -44,6 +45,7 @@ def process_aggregation(batch_df,batch_id):
 
 
 cdc_stream = spark.readStream.format("delta").option("readChangeFeed","true").table(raw_table)
+print("Read Stream Started.........")
 
 cdc_stream.writeStream.foreachBatch(process_aggregation).outputMode("update").start().awaitTermination()
 print("Write Stream Started.........")
